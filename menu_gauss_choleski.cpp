@@ -30,8 +30,9 @@ public:
 	float* solveTriangSup(float** mat, float* sec);       //resolution de matrice triangulaire superieure
     float* solveTriangInf(float** mat, float* sec);       //resolution de matrice triangulaire inferieure
     
+    //method de resolution
     void solveCholeski();
-
+    void solveGauss();
 	size_t  getdim(){ return dim;}
 	float** getMat(){ return A;}
     float** getB(){return B;}
@@ -41,14 +42,8 @@ public:
     float* getb(){return b;}
 
     //mutator
-    void setX(float* vec){
-        for(int i=0;i<(int)dim;i++)
-            x[i] = vec [i];
-    }
-    void setY(float* vec){
-        for(int i=0;i<(int)dim;i++)
-            y[i] = vec [i];
-    }
+    void setX(float* vec){ x = vec;}
+    void setY(float* vec){ y = vec;}
 
 private:
 	size_t dim;
@@ -91,6 +86,7 @@ Lsolver::Lsolver(string filename){
     else{
         cout << "Données non trouvées..." << endl;  //message d'erreur
     }
+    fichier.close();
 }
 
 //dectructeur pour les tableaux alloués
@@ -165,6 +161,7 @@ float* Lsolver::solveTriangSup(float** mat, float* sec){ //mat=Bt, sec=y
     }
     return res;
 }
+
 float* Lsolver::solveTriangInf(float** mat, float* sec){ //mat=B, sec=b
     float s(0);
     int i(0), j(0);
@@ -176,11 +173,21 @@ float* Lsolver::solveTriangInf(float** mat, float* sec){ //mat=B, sec=b
     }
     return res;
 }
+/*
+void Lsolver::solveTriangInf(){ //mat=B, sec=b, res=y
+    float s(0);
+    int i(0), j(0);
+    for(i=0; i<(int)dim; i++){  /// Must go forward
+        for(j=0, s=0; j<int(dim); j++)
+            s += (B[i][j]*y[j]);
+        y[i] = (b[i]-s)/B[i][i];
+    }
+}*/
 
 void Lsolver::solveCholeski(){
     /*
-        choleski
-    */
+     *  Choleski
+     */
 	decompMat();
     //display
     cout << "\nDécomposistion de la matrice A tq A = B.Bt" << endl;
@@ -192,12 +199,14 @@ void Lsolver::solveCholeski(){
     
     //définir les valeurs de y en tand que solution du systeme B.y = b
     setY(solveTriangInf(B,b));
-    
+    //solver.solveTriangInf();
+
     //définir les valeurs de x en tant que solution du system Bt.x = y
     setX(solveTriangSup(Bt,y));
-    
-/// R�sultats
-	displayResult();
+}
+
+void Lsolver::solveGauss(){
+
 }
 
 int main(){
@@ -212,8 +221,11 @@ int main(){
     cout << "Le second membre b : " << endl;
     displayVec(solver.getdim(), solver.getRhs());
     
-/// Calculs
+/// Resolution
     solver.solveCholeski();
+    
+/// R�sultats
+	solver.displayResult();
 
     return 0;
 }
