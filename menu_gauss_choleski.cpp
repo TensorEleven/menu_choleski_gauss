@@ -27,20 +27,36 @@ public:
 	void displayResult();
     void decompMat();            //retourne une matrice triangulaire sup B
     void transpose(float **mat); //transposer une matrice
-	void solveTriangSup();       //resolution de matrice triangulaire superieure
-    void solveTriangInf();       //resolution de matrice triangulaire inferieure
+	float* solveTriangSup(float** mat, float* sec);       //resolution de matrice triangulaire superieure
+    float* solveTriangInf(float** mat, float* sec);       //resolution de matrice triangulaire inferieure
     
+    void solveCholeski();
+
 	size_t  getdim(){ return dim;}
 	float** getMat(){ return A;}
     float** getB(){return B;}
     float** getBt(){return Bt;}
 	float*  getRhs(){ return b;}
+    float* getY(){return y;}
+    float* getb(){return b;}
+
+    //mutator
+    void setX(float* vec){
+        for(int i=0;i<(int)dim;i++)
+            x[i] = vec [i];
+    }
+    void setY(float* vec){
+        for(int i=0;i<(int)dim;i++)
+            y[i] = vec [i];
+    }
+
 private:
 	size_t dim;
 	float  **A;		    // matrice du probl�me A.x=b
     float **B;          // matrice triangulaire sup d udecomposition
 	float **Bt;         // matrice transposé de B
     float  *b, *x, *y;	// second membre et inconnu du probl�me
+    //float *resTriangSup;
 };
 
 Lsolver::Lsolver(string filename){
@@ -108,7 +124,7 @@ void Lsolver::displayResult(){
 void Lsolver::decompMat(){           //trouver B,Bt tq A=B.Bt et A.x=b
     for(int i=0; i<(int)dim;i++){
         for(int j=0; j<=i;j++){
-            float sum = 0;          //somme des B[i][k].B[j][k]
+            float sum = 0;           //somme des B[i][k].B[j][k]
             if(i!=j){
                 for(int k=0;k<=j-1;k++){
                     sum+=(B[i][k]*B[j][k]);
@@ -134,23 +150,54 @@ void Lsolver::transpose(float **mat){   //remplir Bt avec le transposé de la ma
     }
 }
 
-void Lsolver::solveTriangSup(){
+//Résoudre une matrice triangulaire supérieur tq
+// mat.res = y
+// mat : matrice carré d'ordre dim
+// res : 
+float* Lsolver::solveTriangSup(float** mat, float* sec){ //mat=Bt, sec=y
     float s(0);
     int i(0), j(0);
+    float *res = newVect<float>(dim);
     for(i=dim-1; i>=0; i--){    /// Must go backward
         for(j=i+1, s=0; j<int(dim); j++)
-            s += (Bt[i][j]*x[j]);
-        x[i] = (y[i]-s)/Bt[i][i];
+            s += (mat[i][j]*res[j]);
+        res[i] = (sec[i]-s)/mat[i][i];
     }
+    return res;
 }
-void Lsolver::solveTriangInf(){
+float* Lsolver::solveTriangInf(float** mat, float* sec){ //mat=B, sec=b
     float s(0);
     int i(0), j(0);
+    float *res = newVect<float>(dim);
     for(i=0; i<(int)dim; i++){  /// Must go forward
         for(j=0, s=0; j<int(dim); j++)
-            s += (B[i][j]*y[j]);
-        y[i] = (b[i]-s)/B[i][i];
+            s += (mat[i][j]*res[j]);
+        res[i] = (sec[i]-s)/mat[i][i];
     }
+    return res;
+}
+
+void Lsolver::solveCholeski(){
+    /*
+        choleski
+    */
+	decompMat();
+    //display
+    cout << "\nDécomposistion de la matrice A tq A = B.Bt" << endl;
+    cout << "\nLa matrice B :" << endl;
+    displayMat(dim,B);
+
+    cout << "\nLa matrice Bt :" << endl;
+    displayMat(dim,Bt);
+    
+    //définir les valeurs de y en tand que solution du systeme B.y = b
+    setY(solveTriangInf(B,b));
+    
+    //définir les valeurs de x en tant que solution du system Bt.x = y
+    setX(solveTriangSup(Bt,y));
+    
+/// R�sultats
+	displayResult();
 }
 
 int main(){
@@ -166,18 +213,7 @@ int main(){
     displayVec(solver.getdim(), solver.getRhs());
     
 /// Calculs
-	solver.decompMat();     //
-    //display
-    cout << "\nDécomposistion de la matrice A tq A = B.Bt" << endl;
-    cout << "\nLa matrice B :" << endl;
-    displayMat(solver.getdim(),solver.getB());
-
-    cout << "\nLa matrice Bt :" << endl;
-    displayMat(solver.getdim(),solver.getBt());
-    solver.solveTriangInf();
-    solver.solveTriangSup();
-/// R�sultats
-	solver.displayResult();
+    solver.solveCholeski();
 
     return 0;
 }
