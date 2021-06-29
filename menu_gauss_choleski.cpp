@@ -25,11 +25,14 @@ public:
 	Lsolver(string filename);    //filename est nom du fichier contenant les données de la matrice
 	~Lsolver();
 	void displayResult();
+    void loadMat(string filename);
     void decompMat();            //retourne une matrice triangulaire sup B
     void transpose(float **mat); //transposer une matrice
-	float* solveTriangSup(float** mat, float* sec);       //resolution de matrice triangulaire superieure
-    float* solveTriangInf(float** mat, float* sec);       //resolution de matrice triangulaire inferieure
+	void solveTriangSup(float** mat, float* sec);       //resolution de matrice triangulaire superieure
+    void solveTriangInf();       //resolution de matrice triangulaire inferieure
     
+    void process(int choice);
+
     //method de resolution
     void solveCholeski();
     void solveGauss();
@@ -38,12 +41,7 @@ public:
     float** getB(){return B;}
     float** getBt(){return Bt;}
 	float*  getRhs(){ return b;}
-    float* getY(){return y;}
-    float* getb(){return b;}
 
-    //mutator
-    void setX(float* vec){ x = vec;}
-    void setY(float* vec){ y = vec;}
 
 private:
 	size_t dim;
@@ -68,7 +66,8 @@ Lsolver::Lsolver(string filename){
         x = newVect<float> (dim);   //solution du systeme
         y = newVect<float> (dim);   //vecteur tq B.y = b
 
-/// remplissage des donn�es
+/// remplissage des données
+    
         for(i=0; i<dim; i++){
             for(j=0; j<dim; j++){
                 fichier >> A[i][j]; 
@@ -89,6 +88,31 @@ Lsolver::Lsolver(string filename){
     fichier.close();
 }
 
+void Lsolver::loadMat(string filename){
+    size_t i(0), j(0);
+    ifstream fichier(filename, ios::in);
+    if(fichier){
+        fichier >> dim;
+
+    for(i=0; i<dim; i++){
+            for(j=0; j<dim; j++){
+                fichier >> A[i][j]; 
+            }
+        }
+        for(i=0; i<dim; i++){
+            fichier >> b[i];
+		}
+        for(i=0; i<dim; i++){       //initialiser les valeurs des vecteurs
+            x[i] = 0;
+            y[i] = 0;
+		}
+        fichier.close();            //fermer le fichier
+    }
+    else{
+        cout << "Données non trouvées..." << endl;  //message d'erreur
+    }
+    fichier.close();
+}
 //dectructeur pour les tableaux alloués
 
 Lsolver::~Lsolver(){
@@ -150,28 +174,24 @@ void Lsolver::transpose(float **mat){   //remplir Bt avec le transposé de la ma
 // mat.res = y
 // mat : matrice carré d'ordre dim
 // res : 
-float* Lsolver::solveTriangSup(float** mat, float* sec){ //mat=Bt, sec=y
+void Lsolver::solveTriangSup(float** mat,float* sec){ //mat=Bt, sec=y
     float s(0);
     int i(0), j(0);
-    float *res = newVect<float>(dim);
     for(i=dim-1; i>=0; i--){    /// Must go backward
         for(j=i+1, s=0; j<int(dim); j++)
-            s += (mat[i][j]*res[j]);
-        res[i] = (sec[i]-s)/mat[i][i];
+            s += (mat[i][j]*x[j]);
+        x[i] = (sec[i]-s)/mat[i][i];
     }
-    return res;
 }
 
-float* Lsolver::solveTriangInf(float** mat, float* sec){ //mat=B, sec=b
+void Lsolver::solveTriangInf(){ //mat=B, sec=b
     float s(0);
     int i(0), j(0);
-    float *res = newVect<float>(dim);
     for(i=0; i<(int)dim; i++){  /// Must go forward
         for(j=0, s=0; j<int(dim); j++)
-            s += (mat[i][j]*res[j]);
-        res[i] = (sec[i]-s)/mat[i][i];
+            s += (B[i][j]*y[j]);
+        y[i] = (b[i]-s)/B[i][i];
     }
-    return res;
 }
 /*
 void Lsolver::solveTriangInf(){ //mat=B, sec=b, res=y
@@ -198,16 +218,94 @@ void Lsolver::solveCholeski(){
     displayMat(dim,Bt);
     
     //définir les valeurs de y en tand que solution du systeme B.y = b
-    setY(solveTriangInf(B,b));
+    solveTriangInf();
     //solver.solveTriangInf();
 
     //définir les valeurs de x en tant que solution du system Bt.x = y
-    setX(solveTriangSup(Bt,y));
+    solveTriangSup(Bt,y);
 }
 
-void Lsolver::solveGauss(){
-
+void Lsolver::solveGauss(){//m=A, btmp=b
+    //repeter l'operation jusqu'à dim-1
+    for (int k=0; k<(int)dim;k++){
+        //trouver pivot max
+        float piv = abs(A[k][k]);
+        int lpiv = k;
+        
+        for(int i=k;i<(int)dim;i++){
+            if(piv<abs((int)A[i][k])){
+                piv = abs(A[i][k]);   //trouver le max |pivot|
+                lpiv = i;                   //sauvegarder la igne
+            }
+        }
+        //echanger la ligne k+1 au ligne lpiv
+        for (int i=0; i<(int)dim; i++){
+            std::swap<float>(A[k][i],A[lpiv][i]);
+        }
+        std::swap<float>(b[k],b[lpiv]);
+       
+        //reduire par method de pivot
+        for(int i=k+1;i<(int)dim;i++){
+            for (int j=k+1; j<(int)dim; j++){  //or for (int j=k;j<dim;j++)
+                if(A[i][j]==0)
+                    continue;
+                A[i][j] = A[i][j] - (A[i][k]/A[k][k])*A[k][j];
+            }
+            b[i] = b[i] - (A[i][k]/A[k][k])*b[k];
+            A[i][k]=0;
+        }
+        //trouver la solution
+        solveTriangSup(A,b);
+    }
 }
+
+/*
+ * 
+ *  M E N U
+ * 
+ * 
+ */
+void Lsolver::process(int choice) {
+    switch (choice)
+    {
+    case 1:
+        cout << "Method de Gauss" << endl;
+        solveGauss();
+        break;
+        
+    case 2:
+        cout << "Choleski" << endl;
+        solveCholeski();
+        break;
+    default:
+        break;
+    }
+}
+// Structure de données pour le menu
+struct Menu {
+    Menu() {
+        menuItemsLength = 2;
+        menuItems = nullptr;
+        menuItems = new (nothrow) string[menuItemsLength];
+        menuItems[0] = "Résoudre par méthode de Gauss";
+        menuItems[1] = "Résoudre par méthode de Choleski";
+    }
+
+    int display() {
+        int i = 0;
+        cout << "Choisi un operation :" << endl;
+        for(i = 0; i < menuItemsLength; i++) {
+            cout << "\t" << i + 1 << " : " << menuItems[i] << endl;
+        }
+        cout << "\t0" << " : Quit" << endl;
+        cout << "\t> : "; cin >> choice;
+        return choice;
+    }
+
+    string * menuItems;
+    int menuItemsLength;
+    int choice;
+};
 
 int main(){
     //Afficher l'environnement
@@ -222,11 +320,19 @@ int main(){
     displayVec(solver.getdim(), solver.getRhs());
     
 /// Resolution
-    solver.solveCholeski();
-    
-/// R�sultats
-	solver.displayResult();
+    Menu menu;
+    int choice=10;
+    while(true) {
+        choice = menu.display();
+        if (choice == 0) {
+            break;
+        }
+        solver.process(choice);
 
+        /// Résultats
+	    solver.displayResult();
+        solver.loadMat("data.txt");
+    }
     return 0;
 }
 
