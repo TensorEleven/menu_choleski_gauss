@@ -25,6 +25,7 @@ public:
 	Lsolver(string filename);    //filename est nom du fichier contenant les données de la matrice
 	~Lsolver();
 	void displayResult();
+    void loadMat(string filename);
     void decompMat();            //retourne une matrice triangulaire sup B
     void transpose(float **mat); //transposer une matrice
 	void solveTriangSup(float** mat, float* sec);       //resolution de matrice triangulaire superieure
@@ -66,6 +67,7 @@ Lsolver::Lsolver(string filename){
         y = newVect<float> (dim);   //vecteur tq B.y = b
 
 /// remplissage des données
+    
         for(i=0; i<dim; i++){
             for(j=0; j<dim; j++){
                 fichier >> A[i][j]; 
@@ -86,6 +88,31 @@ Lsolver::Lsolver(string filename){
     fichier.close();
 }
 
+void Lsolver::loadMat(string filename){
+    size_t i(0), j(0);
+    ifstream fichier(filename, ios::in);
+    if(fichier){
+        fichier >> dim;
+
+    for(i=0; i<dim; i++){
+            for(j=0; j<dim; j++){
+                fichier >> A[i][j]; 
+            }
+        }
+        for(i=0; i<dim; i++){
+            fichier >> b[i];
+		}
+        for(i=0; i<dim; i++){       //initialiser les valeurs des vecteurs
+            x[i] = 0;
+            y[i] = 0;
+		}
+        fichier.close();            //fermer le fichier
+    }
+    else{
+        cout << "Données non trouvées..." << endl;  //message d'erreur
+    }
+    fichier.close();
+}
 //dectructeur pour les tableaux alloués
 
 Lsolver::~Lsolver(){
@@ -306,6 +333,7 @@ int main(){
 
         /// Résultats
 	    solver.displayResult();
+        solver.loadMat("data.txt");
     }
 
     return 0;
