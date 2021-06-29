@@ -27,8 +27,8 @@ public:
 	void displayResult();
     void decompMat();            //retourne une matrice triangulaire sup B
     void transpose(float **mat); //transposer une matrice
-	float* solveTriangSup(float** mat, float* sec);       //resolution de matrice triangulaire superieure
-    float* solveTriangInf();       //resolution de matrice triangulaire inferieure
+	void solveTriangSup(float** mat, float* sec);       //resolution de matrice triangulaire superieure
+    void solveTriangInf();       //resolution de matrice triangulaire inferieure
     
     void process(int choice);
 
@@ -40,12 +40,7 @@ public:
     float** getB(){return B;}
     float** getBt(){return Bt;}
 	float*  getRhs(){ return b;}
-    float* getY(){return y;}
-    float* getb(){return b;}
 
-    //mutator
-    void setX(float* vec){ x = vec;}
-    void setY(float* vec){ y = vec;}
 
 private:
 	size_t dim;
@@ -152,28 +147,24 @@ void Lsolver::transpose(float **mat){   //remplir Bt avec le transposé de la ma
 // mat.res = y
 // mat : matrice carré d'ordre dim
 // res : 
-float* Lsolver::solveTriangSup(float** mat, float* sec){ //mat=Bt, sec=y
+void Lsolver::solveTriangSup(float** mat,float* sec){ //mat=Bt, sec=y
     float s(0);
     int i(0), j(0);
-    float *res = newVect<float>(dim);
     for(i=dim-1; i>=0; i--){    /// Must go backward
         for(j=i+1, s=0; j<int(dim); j++)
-            s += (mat[i][j]*res[j]);
-        res[i] = (sec[i]-s)/mat[i][i];
+            s += (mat[i][j]*x[j]);
+        x[i] = (sec[i]-s)/mat[i][i];
     }
-    return res;
 }
 
-float* Lsolver::solveTriangInf(){ //mat=B, sec=b
+void Lsolver::solveTriangInf(){ //mat=B, sec=b
     float s(0);
     int i(0), j(0);
-    float *res = newVect<float>(dim);
     for(i=0; i<(int)dim; i++){  /// Must go forward
         for(j=0, s=0; j<int(dim); j++)
-            s += (B[i][j]*res[j]);
-        res[i] = (b[i]-s)/B[i][i];
+            s += (B[i][j]*y[j]);
+        y[i] = (b[i]-s)/B[i][i];
     }
-    return res;
 }
 /*
 void Lsolver::solveTriangInf(){ //mat=B, sec=b, res=y
@@ -200,49 +191,44 @@ void Lsolver::solveCholeski(){
     displayMat(dim,Bt);
     
     //définir les valeurs de y en tand que solution du systeme B.y = b
-    y = solveTriangInf();
+    solveTriangInf();
     //solver.solveTriangInf();
 
     //définir les valeurs de x en tant que solution du system Bt.x = y
-    setX(solveTriangSup(Bt,y));
+    solveTriangSup(Bt,y);
 }
 
 void Lsolver::solveGauss(){//m=A, btmp=b
     //repeter l'operation jusqu'à dim-1
-    float** m = newMat(dim,dim);
-    float* btmp = newVect<float>(dim);
-    m = A;
     for (int k=0; k<(int)dim;k++){
         //trouver pivot max
-        float piv = abs(m[k][k]);
+        float piv = abs(A[k][k]);
         int lpiv = k;
         
         for(int i=k;i<(int)dim;i++){
-            if(piv<abs((int)m[i][k])){
-                piv = abs(m[i][k]);   //trouver le max |pivot|
+            if(piv<abs((int)A[i][k])){
+                piv = abs(A[i][k]);   //trouver le max |pivot|
                 lpiv = i;                   //sauvegarder la igne
             }
         }
         //echanger la ligne k+1 au ligne lpiv
         for (int i=0; i<(int)dim; i++){
-            std::swap<float>(m[k][i],m[lpiv][i]);
-            std::swap<float>(btmp[k],btmp[lpiv]);
+            std::swap<float>(A[k][i],A[lpiv][i]);
         }
-        cout << "debug :" << endl;
-        displayMat(dim,m);
+        std::swap<float>(b[k],b[lpiv]);
+       
         //reduire par method de pivot
         for(int i=k+1;i<(int)dim;i++){
             for (int j=k+1; j<(int)dim; j++){  //or for (int j=k;j<dim;j++)
-                if(m[i][j]==0)
+                if(A[i][j]==0)
                     continue;
-                m[i][j] = m[i][j] - (m[i][k]/m[k][k])*m[k][j];
+                A[i][j] = A[i][j] - (A[i][k]/A[k][k])*A[k][j];
             }
-            btmp[i] = btmp[i] - (m[i][k]/m[k][k])*btmp[k];
-            m[i][k]=0;
+            b[i] = b[i] - (A[i][k]/A[k][k])*b[k];
+            A[i][k]=0;
         }
-
         //trouver la solution
-        x = solveTriangSup(m,btmp);
+        solveTriangSup(A,b);
     }
 }
 
