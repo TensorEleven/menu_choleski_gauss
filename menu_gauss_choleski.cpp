@@ -320,8 +320,6 @@ int main(){
     displayVec(solver.getdim(), solver.getRhs());
     
 /// Resolution
-    //solver.solveCholeski();
-    //solver.solveGauss();
     Menu menu;
     int choice=10;
     while(true) {
@@ -335,7 +333,6 @@ int main(){
 	    solver.displayResult();
         solver.loadMat("data.txt");
     }
-
     return 0;
 }
 
